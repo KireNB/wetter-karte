@@ -1,4 +1,153 @@
 <!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wetterkarte mit Tag/Nacht & Emojis</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 10px;
+      padding: 0;
+    }
+    #map { height: 300px; max-width: 100%; margin-bottom: 15px; }
+    canvas { max-width: 100%; height: 300px; }
+
+    /* Mobile Optimierung */
+    @media (max-width: 600px) {
+      body { margin: 5px; }
+      #map { height: 200px; }
+      canvas { height: 200px; }
+    }
+
+    .weather-emoji {
+      font-size: 1.8rem;
+      margin-left: 10px;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+  <h1>Wetterkarte (7 Tage zurück + 3 Tage Vorschau)</h1>
+  <div id="map"></div>
+
+  <canvas id="wetterChart"></canvas>
+
+  <script>
+    const weatherCodeToEmoji = {
+      0: "☀️", 1: "🌤️", 2: "⛅", 3: "☁️", 45: "🌫️", 48: "🌫️",
+      51: "🌦️", 53: "🌧️", 55: "🌧️", 61: "🌦️", 63: "🌧️", 65: "🌧️",
+      80: "🌧️", 95: "⛈️", 99: "⛈️"
+    };
+
+    const map = L.map('map').setView([52.52, 13.405], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    const marker = L.marker([52.52, 13.405]).addTo(map);
+
+    map.on('click', async function(e) {
+      const lat = e.latlng.lat.toFixed(4);
+      const lon = e.latlng.lng.toFixed(4);
+      marker.setLatLng(e.latlng);
+
+      const res = await fetch(`/api/wetter?lat=${lat}&lon=${lon}`);
+      const daten = await res.json();
+
+      const labels = daten.map(d => d.datum);
+      const tempMax = daten.map(d => d.temp_max);
+      const tempMin = daten.map(d => d.temp_min);
+      const tempAvg = daten.map(d => d.temp_avg);
+      const tempDay = daten.map(d => d.temp_day);
+      const tempNight = daten.map(d => d.temp_night);
+      const emojis = daten.map(d => weatherCodeToEmoji[d.weathercode] || "❓");
+
+      const ctx = document.getElementById('wetterChart').getContext('2d');
+      if (window.chart) window.chart.destroy();
+      window.chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Max Temperatur (°C)',
+              data: tempMax,
+              borderColor: 'rgb(255, 99, 132)',
+              tension: 0.2
+            },
+            {
+              label: 'Min Temperatur (°C)',
+              data: tempMin,
+              borderColor: 'rgb(54, 162, 235)',
+              tension: 0.2
+            },
+            {
+              label: 'Durchschnitt (°C)',
+              data: tempAvg,
+              borderColor: 'rgb(255, 205, 86)',
+              borderDash: [5, 5],
+              tension: 0.2
+            },
+            {
+              label: 'Tag Temperatur (°C)',
+              data: tempDay,
+              borderColor: 'rgb(75, 192, 192)',
+              borderDash: [3,3],
+              tension: 0.2
+            },
+            {
+              label: 'Nacht Temperatur (°C)',
+              data: tempNight,
+              borderColor: 'rgb(153, 102, 255)',
+              borderDash: [3,3],
+              tension: 0.2
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+          plugins: {
+            tooltip: {
+              enabled: true,
+              callbacks: {
+                label: function(context) {
+                  let label = context.dataset.label || '';
+                  if (label) label += ': ';
+                  label += context.parsed.y + ' °C';
+                  if (context.dataset.label === 'Max Temperatur (°C)') {
+                    const emoji = emojis[context.dataIndex];
+                    label += ' ' + emoji;
+                  }
+                  return label;
+                }
+              }
+            }
+          },
+          scales: {
+            y: { beginAtZero: false }
+          }
+        }
+      });
+    });
+
+    // Initialabruf für Berlin
+    map.fire('click', { latlng: L.latLng(52.52, 13.405) });
+  </script>
+</body>
+</html>
+
+
+<!-- <!DOCTYPE html>
 <html>
 <head>
   <title>Wetterkarte</title>
@@ -88,78 +237,6 @@
     });
 
     // Initialabruf für Berlin, damit direkt was angezeigt wird
-    map.fire('click', { latlng: L.latLng(52.52, 13.405) });
-  </script>
-</body>
-</html>
-
-
-<!-- <!DOCTYPE html>
-<html>
-<head>
-  <title>Wetterkarte</title>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-  <style>
-    #map { height: 400px; }
-    canvas { max-width: 800px; margin-top: 20px; }
-  </style>
-</head>
-<body>
-  <h1>Wetterkarte (7 Tage zurück & 3 Tage vor)</h1>
-  <div id="map"></div>
-  <canvas id="wetterChart"></canvas>
-
-  <script>
-    const map = L.map('map').setView([52.52, 13.405], 6); // Start in Berlin
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
-
-    const marker = L.marker([52.52, 13.405]).addTo(map);
-
-    map.on('click', async function(e) {
-      const lat = e.latlng.lat.toFixed(4);
-      const lon = e.latlng.lng.toFixed(4);
-
-      marker.setLatLng(e.latlng); // Marker zur neuen Position setzen
-
-      const res = await fetch(`/api/wetter?lat=${lat}&lon=${lon}`);
-      const daten = await res.json();
-
-      const labels = daten.map(d => d.datum);
-      const temps = daten.map(d => d.temp);
-
-      const ctx = document.getElementById('wetterChart').getContext('2d');
-      if (window.chart) window.chart.destroy(); // alten Chart entfernen
-      window.chart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: labels,
-          datasets: [{
-            label: 'Max Temperatur (°C)',
-            data: temps,
-            fill: false,
-            borderColor: 'rgb(255, 99, 132)',
-            tension: 0.2
-          }]
-        },
-        options: {
-          responsive: true,
-          scales: {
-            y: { beginAtZero: false }
-          }
-        }
-      });
-    });
-
-    // Optionale Initialabfrage für Startpunkt
     map.fire('click', { latlng: L.latLng(52.52, 13.405) });
   </script>
 </body>
