@@ -1,8 +1,6 @@
-# Basis
 
 from flask import Flask, render_template, request, jsonify
 import requests
-import os
 
 app = Flask(__name__)
 
@@ -21,7 +19,8 @@ def wetter_api():
     url = (
         f"https://api.open-meteo.com/v1/forecast?"
         f"latitude={lat}&longitude={lon}"
-        f"&daily=temperature_2m_max&past_days=7&forecast_days=3"
+        f"&daily=temperature_2m_max,temperature_2m_min"
+        f"&past_days=7&forecast_days=3"
         f"&timezone=Europe%2FBerlin"
     )
 
@@ -29,22 +28,30 @@ def wetter_api():
     data = response.json()
 
     tage = data["daily"]["time"]
-    temperaturen = data["daily"]["temperature_2m_max"]
+    max_temp = data["daily"]["temperature_2m_max"]
+    min_temp = data["daily"]["temperature_2m_min"]
 
     wetterdaten = [
-        {"datum": t, "temp": temp}
-        for t, temp in zip(tage, temperaturen)
+        {
+            "datum": d,
+            "temp_max": tmax,
+            "temp_min": tmin,
+            "temp_avg": round((tmax + tmin) / 2, 1)
+        }
+        for d, tmax, tmin in zip(tage, max_temp, min_temp)
     ]
 
     return jsonify(wetterdaten)
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=5000)
 
+
+# # Basis
 
 # from flask import Flask, render_template, request, jsonify
 # import requests
+# import os
 
 # app = Flask(__name__)
 
@@ -62,7 +69,9 @@ if __name__ == "__main__":
 
 #     url = (
 #         f"https://api.open-meteo.com/v1/forecast?"
-#         f"latitude={lat}&longitude={lon}&daily=temperature_2m_max&timezone=Europe%2FBerlin"
+#         f"latitude={lat}&longitude={lon}"
+#         f"&daily=temperature_2m_max&past_days=7&forecast_days=3"
+#         f"&timezone=Europe%2FBerlin"
 #     )
 
 #     response = requests.get(url)
@@ -79,4 +88,5 @@ if __name__ == "__main__":
 #     return jsonify(wetterdaten)
 
 # if __name__ == "__main__":
-#     app.run(host="0.0.0.0", port=5000)
+#     port = int(os.environ.get("PORT", 5000))
+#     app.run(host="0.0.0.0", port=port)
