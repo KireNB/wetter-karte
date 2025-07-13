@@ -1,4 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Wetterkarte</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    #map { height: 400px; }
+    canvas { max-width: 800px; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h1>Wetterkarte (7 Tage zurück & 3 Tage vor)</h1>
+  <div id="map"></div>
+  <canvas id="wetterChart"></canvas>
+
+  <script>
+    const map = L.map('map').setView([52.52, 13.405], 6); // Start in Berlin
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    const marker = L.marker([52.52, 13.405]).addTo(map);
+
+    map.on('click', async function(e) {
+      const lat = e.latlng.lat.toFixed(4);
+      const lon = e.latlng.lng.toFixed(4);
+
+      marker.setLatLng(e.latlng); // Marker zur neuen Position setzen
+
+      const res = await fetch(`/api/wetter?lat=${lat}&lon=${lon}`);
+      const daten = await res.json();
+
+      const labels = daten.map(d => d.datum);
+      const temps = daten.map(d => d.temp);
+
+      const ctx = document.getElementById('wetterChart').getContext('2d');
+      if (window.chart) window.chart.destroy(); // alten Chart entfernen
+      window.chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Max Temperatur (°C)',
+            data: temps,
+            fill: false,
+            borderColor: 'rgb(255, 99, 132)',
+            tension: 0.2
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: { beginAtZero: false }
+          }
+        }
+      });
+    });
+
+    // Optionale Initialabfrage für Startpunkt
+    map.fire('click', { latlng: L.latLng(52.52, 13.405) });
+  </script>
+</body>
+</html>
+
+
+<!-- 
 <!DOCTYPE html>
 <html>
 <head>
@@ -54,6 +126,8 @@
     </script>
 </body>
 </html>
+ -->
+
 
 
 <!-- <!DOCTYPE html>
